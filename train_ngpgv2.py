@@ -6,6 +6,7 @@ import glob
 import imageio
 import numpy as np
 import cv2
+import json
 from einops import rearrange
 
 # data
@@ -67,6 +68,9 @@ class NeRFSystem(LightningModule):
             self.val_lpips = LearnedPerceptualImagePatchSimilarity('vgg')
             for p in self.val_lpips.net.parameters():
                 p.requires_grad = False
+
+        # Initialize JSON results dictionary
+        self.final_results = {'psnr': [], 'ssim': [], 'lpips': []}
 
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
         self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.vocab_size, rgb_act=rgb_act, dim_a = self.hparams.dim_a, dim_g = self.hparams.dim_g)
@@ -190,7 +194,7 @@ class NeRFSystem(LightningModule):
 
     def on_validation_start(self):
         torch.cuda.empty_cache()
-        if not self.hparams.no_save_test:
+        if self.current_epoch == self.trainer.max_epochs - 1 and not self.hparams.no_save_test:
             self.val_dir = f'results/{self.hparams.dataset_name}/{self.hparams.exp_name}'
             os.makedirs(self.val_dir, exist_ok=True)
 
@@ -201,22 +205,32 @@ class NeRFSystem(LightningModule):
         logs = {}
         # compute each metric per image
         self.val_psnr(results['rgb'], rgb_gt)
-        logs['psnr'] = self.val_psnr.compute()
+        psnr = self.val_psnr.compute()
+        logs['psnr'] = psnr
         self.val_psnr.reset()
 
         w, h = self.train_dataset.img_wh
         rgb_pred = rearrange(results['rgb'], '(h w) c -> 1 c h w', h=h)
         rgb_gt = rearrange(rgb_gt, '(h w) c -> 1 c h w', h=h)
         self.val_ssim(rgb_pred, rgb_gt)
-        logs['ssim'] = self.val_ssim.compute()
+        ssim = self.val_ssim.compute()
+        logs['ssim'] = ssim
         self.val_ssim.reset()
         if self.hparams.eval_lpips:
             self.val_lpips(torch.clip(rgb_pred*2-1, -1, 1),
                            torch.clip(rgb_gt*2-1, -1, 1))
-            logs['lpips'] = self.val_lpips.compute()
+            lpips = self.val_lpips.compute()
+            logs['lpips'] = lpips
             self.val_lpips.reset()
 
-        if not self.hparams.no_save_test: # save test image to disk
+        # Save results for JSON
+        self.final_results['psnr'].append(psnr.item())
+        self.final_results['ssim'].append(ssim.item())
+        if self.hparams.eval_lpips:
+            self.final_results['lpips'].append(lpips.item())
+
+        # Only save rendered test images on last epoch
+        if self.current_epoch == self.trainer.max_epochs - 1 and not self.hparams.no_save_test:
             idx = batch['img_idxs']
             rgb_pred = rearrange(results['rgb'].cpu().numpy(), '(h w) c -> h w c', h=h)
             rgb_pred = (rgb_pred*255).astype(np.uint8)
@@ -229,16 +243,24 @@ class NeRFSystem(LightningModule):
     def validation_epoch_end(self, outputs):
         psnrs = torch.stack([x['psnr'] for x in outputs])
         mean_psnr = all_gather_ddp_if_available(psnrs).mean()
+        self.final_results['mean_psnr'] = np.mean(self.final_results['psnr'])
         self.log('test/psnr', mean_psnr, True)
 
         ssims = torch.stack([x['ssim'] for x in outputs])
         mean_ssim = all_gather_ddp_if_available(ssims).mean()
+        self.final_results['mean_ssim'] = np.mean(self.final_results['ssim'])
         self.log('test/ssim', mean_ssim, True)
 
         if self.hparams.eval_lpips:
             lpipss = torch.stack([x['lpips'] for x in outputs])
             mean_lpips = all_gather_ddp_if_available(lpipss).mean()
+            self.final_results['mean_lpips'] =  np.mean(self.final_results['lpips'])
             self.log('test/lpips_vgg', mean_lpips, True)
+        
+        if self.current_epoch == self.trainer.max_epochs - 1:
+            # Save test results to JSON file
+            with open(os.path.join(self.val_dir, 'test_results.json'), 'w') as f:
+                json.dump(self.final_results, f)
 
     def get_progress_bar_dict(self):
         # don't show the version number
