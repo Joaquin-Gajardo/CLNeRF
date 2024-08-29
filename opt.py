@@ -17,7 +17,8 @@ def get_opts():
                             'nsvf_TaTSeq_CLNerf', 'nsvf_TaTSeq_MEILNERF',
                             'colmap', 'colmap_ngpa', 'colmap_ngpa_CLNerf',
                             'colmap_ngpa_MEIL', 'colmap_ngpa_lb', 'nerfpp',
-                            'nerfpp_lb', 'nerfpp_CLNerf', 'nerfpp_MEIL', 'colmap_ngpa_CLNerf_render'
+                            'nerfpp_lb', 'nerfpp_CLNerf', 'nerfpp_MEIL', 'colmap_ngpa_CLNerf_render',
+                            'colmap_ngpa_render'
                         ],
                         help='which dataset to train/test')
     parser.add_argument('--split',

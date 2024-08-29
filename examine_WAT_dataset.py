@@ -1,22 +1,18 @@
 #%%
+import json
+import os
 from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
 
-#%%
-path = Path('dataset/WAT')
 
-#%%
-scenes = list(path.iterdir())
-scenes
-
-# %%
+# %% @title Get amount of timesteps and frames per scene for the WAT dataset
 def analyze_dataset(root_path):
     root = Path(root_path)
     summary = defaultdict(lambda: {"video_count": 0, "total_images": 0})
     
-    for scene in scenes:
+    for scene in root.iterdir():
         if scene.is_dir() and scene.name != ".DS_Store":
             images_folder = scene / "images"
             timestep_paths = [timestep for timestep in images_folder.iterdir()]
@@ -37,19 +33,11 @@ def analyze_dataset(root_path):
     # Create and return the DataFrame
     return pd.DataFrame(data).sort_values("Scene")
 
-#%%
 # Use the function
 df = analyze_dataset("dataset/WAT")
 print(df.to_string(index=False))
 
-
-# %%
-
-import json
-import os
-
-import pandas as pd
-
+# %% @title Summarize results
 
 def summarize_results(base_folder):
     # List to store results

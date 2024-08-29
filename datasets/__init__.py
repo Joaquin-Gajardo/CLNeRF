@@ -11,7 +11,7 @@ from .nerfpp import NeRFPPDataset
 from .lb.nerfpp import NeRFPPDataset_lb
 from .CLNerf.nerfpp import NeRFPPDataset_CLNerf
 from .NGPA.colmap import ColmapDataset_NGPA, ColmapDataset_NGPA_lb, ColmapDataset_NGPA_CLNerf, ColmapDataset_NGPA_MEIL
-from .NGPA.colmap_render import ColmapDataset_NGPA_CLNerf_render
+from .NGPA.colmap_render import ColmapDataset_NGPA_CLNerf_render, ColmapDataset_NGPA_render
 
 dataset_dict = {
     'nsvf': NSVFDataset,  # check
@@ -22,6 +22,7 @@ dataset_dict = {
     'nsvf_TaTSeq_MEILNERF': NSVFDataset_TaTSeq_MEIL,
     'colmap': ColmapDataset,
     'colmap_ngpa': ColmapDataset_NGPA,  # check
+    'colmap_ngpa_render': ColmapDataset_NGPA_render,  # check
     'colmap_ngpa_lb': ColmapDataset_NGPA_lb,
     'colmap_ngpa_CLNerf': ColmapDataset_NGPA_CLNerf,  # check
     'colmap_ngpa_CLNerf_render': ColmapDataset_NGPA_CLNerf_render,  # check
