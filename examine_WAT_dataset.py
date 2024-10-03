@@ -36,6 +36,7 @@ def analyze_dataset(root_path):
 # Use the function
 df = analyze_dataset("dataset/WAT")
 print(df.to_string(index=False))
+df.to_csv("WAT_scenes_metadata.csv", index=False)
 
 # %% @title Summarize results
 
@@ -45,6 +46,8 @@ def summarize_results(base_folder):
 
     # Iterate through each subfolder in the base folder
     for scene_folder in os.listdir(base_folder):
+        if scene_folder == "dyson_scale16":
+            continue
         scene_path = os.path.join(base_folder, scene_folder)
         
         # Check if it's a directory
@@ -68,7 +71,7 @@ def summarize_results(base_folder):
                 print(f"Warning: No JSON file found for scene {scene_folder}")
 
     # Create a DataFrame
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(results).sort_values('Scene')
 
     # Calculate overall mean
     mean_row = pd.DataFrame({
@@ -95,6 +98,6 @@ summary_table = summarize_results(base_folder)
 print(summary_table.to_string())
 
 # Optionally, save to CSV
-summary_table.to_csv("CLNeRF_UB_WAT_results_summary.csv")
+summary_table.to_csv("CLNeRF_UB_WAT_results_summary_with_dyson.csv")
 
 # %%
