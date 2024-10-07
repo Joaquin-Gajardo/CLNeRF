@@ -91,13 +91,18 @@ def summarize_results(base_folder):
 
 #%%
 # Usage
-base_folder = "results/colmap_ngpa"
+model = "NGPG"
+exp = None #"exp1" # None for no experiment (NGP and NGPA)
+base_folder = f"results/colmap_ngpa/{model}"
+if exp:
+    base_folder = os.path.join(base_folder, exp)
 summary_table = summarize_results(base_folder)
 
 # Print the table
 print(summary_table.to_string())
 
 # Optionally, save to CSV
-summary_table.to_csv("CLNeRF_UB_WAT_results_summary_with_dyson.csv")
+save_string = model if not exp else f"{model}-{exp}"
+summary_table.to_csv(f"CLNeRF_UB_{save_string}_WAT_results_summary.csv")
 
 # %%

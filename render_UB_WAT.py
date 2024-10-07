@@ -3,6 +3,7 @@ from torch import nn
 from opt import get_opts
 import os
 import glob
+import json
 import imageio
 import numpy as np
 import cv2
@@ -15,7 +16,7 @@ from datasets.ray_utils import axisangle_to_R, get_rays
 
 # models
 from kornia.utils.grid import create_meshgrid3d
-from models.networks import NGPGv2
+from models.networks import NGPGv2, NGPA, NGP
 from models.rendering_NGPA import render, MAX_SAMPLES
 # from models.rendering import render_ori
 
@@ -60,7 +61,6 @@ class NeRFSystem(LightningModule):
         self.update_interval = 16
 
         self.loss = NeRFLoss(lambda_distortion=self.hparams.distortion_loss_w)
-        self.train_psnr = PeakSignalNoiseRatio(data_range=1)
         self.val_psnr = PeakSignalNoiseRatio(data_range=1)
         self.val_ssim = StructuralSimilarityIndexMeasure(data_range=1)
         if self.hparams.eval_lpips:
@@ -68,8 +68,20 @@ class NeRFSystem(LightningModule):
             for p in self.val_lpips.net.parameters():
                 p.requires_grad = False
 
+        # Initialize JSON results dictionary
+        if not self.hparams.no_metrics:
+            self.final_results = {'psnr': [], 'ssim': [], 'lpips': []}
+
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
-        self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, rgb_act=rgb_act, dim_a = self.hparams.dim_a, dim_g = self.hparams.dim_g)
+        if hparams.model == 'NGPGv2':
+            self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, rgb_act=rgb_act, dim_a = self.hparams.dim_a, dim_g = self.hparams.dim_g)
+        elif hparams.model == 'NGPA':
+            self.model = NGPA(scale=self.hparams.scale, vocab_size=self.hparams.task_curr+1, rgb_act=rgb_act, dim_a = self.hparams.dim_a)
+        elif hparams.model == 'NGP':
+            self.model = NGP(scale=self.hparams.scale, rgb_act=rgb_act)
+        else:
+            raise ValueError(f"Model {hparams.model} not supported!")
+            
         G = self.model.grid_size
         self.model.register_buffer('density_grid',
             torch.zeros(self.model.cascades, G**3))
@@ -116,10 +128,11 @@ class NeRFSystem(LightningModule):
         self.register_buffer('directions', self.test_dataset.directions.to(self.device))
         self.register_buffer('poses', self.test_dataset.poses.to(self.device))
 
-        self.video_folder = f'results/video_demo/{self.hparams.render_fname}/{self.hparams.dataset_name}/{self.hparams.exp_name}_{self.hparams.render_fname}'
-        os.makedirs(f'results/video_demo/{self.hparams.render_fname}/{self.hparams.dataset_name}/{self.hparams.exp_name}_{self.hparams.render_fname}', exist_ok=True)
-        self.rgb_video_writer = imageio.get_writer(self.video_folder+'/rgb.mp4', fps=60)
-        self.depth_video_writer = imageio.get_writer(self.video_folder+'/depth.mp4', fps=60)
+        if not self.hparams.no_save_test:
+            self.video_folder = f'results/video_demo/{self.hparams.render_fname}/{self.hparams.dataset_name}/{self.hparams.model}/{self.hparams.exp_name}_{self.hparams.render_fname}'
+            os.makedirs(self.video_folder, exist_ok=True)
+            self.rgb_video_writer = imageio.get_writer(self.video_folder+'/rgb.mp4', fps=60)
+            self.depth_video_writer = imageio.get_writer(self.video_folder+'/depth.mp4', fps=60)
 
     def configure_optimizers(self):
         # define additional parameters
@@ -144,11 +157,7 @@ class NeRFSystem(LightningModule):
         return opts, [net_sch]
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset,
-                          num_workers=16,
-                          persistent_workers=True,
-                          batch_size=None,
-                          pin_memory=True)
+        pass
 
     def val_dataloader(self):
         return DataLoader(self.test_dataset,
@@ -157,10 +166,7 @@ class NeRFSystem(LightningModule):
                           pin_memory=True)
 
     def test_dataloader(self):
-        return DataLoader(self.rep_dataset,
-                          num_workers=8,
-                          batch_size=None,
-                          pin_memory=True)
+        pass
 
     def on_train_start(self):
         pass
@@ -168,19 +174,53 @@ class NeRFSystem(LightningModule):
     def training_step(self, batch, batch_nb, *args):
         pass
 
-
     def on_validation_start(self):
         torch.cuda.empty_cache()
         print("start validation")
-        if not self.hparams.no_save_test:
-            self.val_dir = self.video_folder
+        if not self.hparams.no_metrics:
+            self.val_dir = f'results/{self.hparams.dataset_name}/{self.hparams.model}/{self.hparams.exp_name}'
             os.makedirs(self.val_dir, exist_ok=True)
 
     def validation_step(self, batch, batch_nb):
         results = self(batch, split='test')
         w, h = self.test_dataset.img_wh
-        rgb_pred = rearrange(results['rgb'], '(h w) c -> 1 c h w', h=h)
 
+        logs = {}
+        if not self.hparams.no_metrics:
+            # compute each metric per image
+            rgb_gt = batch['rgb']   
+            self.val_psnr(results['rgb'], rgb_gt)
+            psnr = self.val_psnr.compute()
+            logs['psnr'] = psnr
+            self.val_psnr.reset()
+
+            rgb_pred = rearrange(results['rgb'], '(h w) c -> 1 c h w', h=h)
+            rgb_gt = rearrange(rgb_gt, '(h w) c -> 1 c h w', h=h)
+            self.val_ssim(rgb_pred, rgb_gt)
+            ssim = self.val_ssim.compute()
+            logs['ssim'] = ssim
+            self.val_ssim.reset()
+            if self.hparams.eval_lpips:
+                self.val_lpips(torch.clip(rgb_pred*2-1, -1, 1),
+                            torch.clip(rgb_gt*2-1, -1, 1))
+                lpips = self.val_lpips.compute()
+                logs['lpips'] = lpips
+                self.val_lpips.reset()
+
+            # Save results for JSON
+            self.final_results['psnr'].append(psnr.item())
+            self.final_results['ssim'].append(ssim.item())
+            if self.hparams.eval_lpips:
+                self.final_results['lpips'].append(lpips.item())
+
+            # Only save rendered test images on last epoch
+            #if self.current_epoch == self.trainer.max_epochs - 1:
+            idx = batch['img_idxs']
+            rgb_pred = rearrange(results['rgb'].cpu().numpy(), '(h w) c -> h w c', h=h)
+            rgb_pred = (rgb_pred*255).astype(np.uint8)
+            depth = depth2img(rearrange(results['depth'].cpu().numpy(), '(h w) -> h w', h=h))
+            imageio.imsave(os.path.join(self.val_dir, f'{idx:03d}.png'), rgb_pred)
+            imageio.imsave(os.path.join(self.val_dir, f'{idx:03d}_d.png'), depth)
 
         if not self.hparams.no_save_test: # save test image to disk
             idx = batch['img_idxs']
@@ -200,11 +240,34 @@ class NeRFSystem(LightningModule):
             # Append images to video writters
             self.rgb_video_writer.append_data(rgb_with_text)
             self.depth_video_writer.append_data(depth_with_text)
-
+            
+        return logs
 
     def validation_epoch_end(self, outputs):
-        self.rgb_video_writer.close()
-        self.depth_video_writer.close()
+        if not self.hparams.no_save_test: # save test image to disk
+            self.rgb_video_writer.close()
+            self.depth_video_writer.close()
+
+        if not self.hparams.no_metrics: 
+            psnrs = torch.stack([x['psnr'] for x in outputs])
+            mean_psnr = all_gather_ddp_if_available(psnrs).mean()
+            self.final_results['mean_psnr'] = np.mean(self.final_results['psnr'])
+            self.log('test/psnr', mean_psnr, True)
+
+            ssims = torch.stack([x['ssim'] for x in outputs])
+            mean_ssim = all_gather_ddp_if_available(ssims).mean()
+            self.final_results['mean_ssim'] = np.mean(self.final_results['ssim'])
+            self.log('test/ssim', mean_ssim, True)
+
+            if self.hparams.eval_lpips:
+                lpipss = torch.stack([x['lpips'] for x in outputs])
+                mean_lpips = all_gather_ddp_if_available(lpipss).mean()
+                self.final_results['mean_lpips'] =  np.mean(self.final_results['lpips'])
+                self.log('test/lpips_vgg', mean_lpips, True)
+            
+            # Save test results to JSON file
+            with open(os.path.join(self.val_dir, 'test_results.json'), 'w') as f:
+                json.dump(self.final_results, f)
 
     def on_test_start(self):
         pass
@@ -223,7 +286,7 @@ if __name__ == '__main__':
     hparams = get_opts()
     system = NeRFSystem(hparams)
 
-    ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2/{hparams.dataset_name}/{hparams.exp_name}',
+    ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/{hparams.model}/{hparams.dataset_name}/{hparams.exp_name}',
                               filename='{epoch:d}',
                               save_weights_only=True,
                               every_n_epochs=hparams.num_epochs,
@@ -231,7 +294,7 @@ if __name__ == '__main__':
                               save_top_k=-1)
     callbacks = [ckpt_cb, TQDMProgressBar(refresh_rate=1)]
 
-    logger = TensorBoardLogger(save_dir=f"logs/NGPGv2/{hparams.dataset_name}",
+    logger = TensorBoardLogger(save_dir=f"logs/{hparams.model}/{hparams.dataset_name}",
                                name=hparams.exp_name,
                                default_hp_metric=False)
 

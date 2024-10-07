@@ -117,6 +117,9 @@ class NeRFSystem(LightningModule):
 
         self.test_dataset = dataset(split='test', **kwargs)
 
+        self.val_dir = f'results/{self.hparams.dataset_name}/{self.hparams.model}/{self.hparams.exp_name}'
+        print(self.val_dir)
+
     def configure_optimizers(self):
         # define additional parameters
         self.register_buffer('directions', self.train_dataset.directions.to(self.device))
@@ -195,7 +198,6 @@ class NeRFSystem(LightningModule):
     def on_validation_start(self):
         torch.cuda.empty_cache()
         if self.current_epoch == self.trainer.max_epochs - 1 and not self.hparams.no_save_test:
-            self.val_dir = f'results/{self.hparams.dataset_name}/{self.hparams.exp_name}'
             os.makedirs(self.val_dir, exist_ok=True)
 
     def validation_step(self, batch, batch_nb):

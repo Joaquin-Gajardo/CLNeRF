@@ -41,6 +41,13 @@ def get_opts():
                         action='store_true',
                         default=False,
                         help='whether to train in HDR-NeRF setting')
+    parser.add_argument('--model',
+                        type=str,
+                        required=True,
+                        choices=[
+                            'NGPGv2', 'NGPA', 'NGPG', 'NGP'
+                        ],
+                        help='Model to use')
 
     # loss parameters
     parser.add_argument('--distortion_loss_w',
@@ -99,6 +106,10 @@ def get_opts():
                         action='store_true',
                         default=False,
                         help='whether to save test image and video')
+    parser.add_argument('--no_metrics',
+                        action='store_true',
+                        default=False,
+                        help='whether to calculate metrics (use it when generating video with render_UB_WAT.py)')
 
     # misc
     parser.add_argument('--exp_name',

@@ -16,7 +16,7 @@ from datasets.ray_utils import axisangle_to_R, get_rays
 
 # models
 from kornia.utils.grid import create_meshgrid3d
-from models.networks import NGPGv2
+from models.networks import NGPG
 from models.rendering_NGPA import render, MAX_SAMPLES
 
 # optimizer, losses
@@ -73,7 +73,7 @@ class NeRFSystem(LightningModule):
         self.final_results = {'psnr': [], 'ssim': [], 'lpips': []}
 
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
-        self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.vocab_size, rgb_act=rgb_act, dim_a = self.hparams.dim_a, dim_g = self.hparams.dim_g)
+        self.model = NGPG(scale=self.hparams.scale, vocab_size=self.hparams.vocab_size, rgb_act=rgb_act, dim_g = self.hparams.dim_g)
         G = self.model.grid_size
         self.model.register_buffer('density_grid',
             torch.zeros(self.model.cascades, G**3))
@@ -117,7 +117,6 @@ class NeRFSystem(LightningModule):
 
         self.test_dataset = dataset(split='test', **kwargs)
 
-        #self.val_dir = f'results/{self.hparams.model}/{self.hparams.dataset_name}/{self.hparams.exp_name}'
         self.val_dir = f'results/{self.hparams.dataset_name}/{self.hparams.model}/{self.hparams.exp_name}'
         print(self.val_dir)
 
@@ -278,7 +277,7 @@ if __name__ == '__main__':
         raise ValueError('You need to provide a @ckpt_path for validation!')
     system = NeRFSystem(hparams)
 
-    ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPGv2/{hparams.dataset_name}/{hparams.exp_name}',
+    ckpt_cb = ModelCheckpoint(dirpath=f'ckpts/NGPG/{hparams.dataset_name}/{hparams.exp_name}',
                               filename='{epoch:d}',
                               save_weights_only=True,
                               every_n_epochs=hparams.num_epochs,
@@ -286,7 +285,7 @@ if __name__ == '__main__':
                               save_top_k=-1)
     callbacks = [ckpt_cb, TQDMProgressBar(refresh_rate=1)]
 
-    logger = TensorBoardLogger(save_dir=f"logs/NGPGv2/{hparams.dataset_name}",
+    logger = TensorBoardLogger(save_dir=f"logs/NGPG/{hparams.dataset_name}",
                                name=hparams.exp_name,
                                default_hp_metric=False)
 
@@ -306,9 +305,9 @@ if __name__ == '__main__':
 
     if not hparams.val_only: # save slimmed ckpt for the last epoch
         ckpt_ = \
-            slim_ckpt(f'ckpts/NGPGv2/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}.ckpt',
+            slim_ckpt(f'ckpts/NGPG/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}.ckpt',
                       save_poses=hparams.optimize_ext)
-        torch.save(ckpt_, f'ckpts/NGPGv2/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
+        torch.save(ckpt_, f'ckpts/NGPG/{hparams.dataset_name}/{hparams.exp_name}/epoch={hparams.num_epochs-1}_slim.ckpt')
 
     if (not hparams.no_save_test): # save video
         imgs = sorted(glob.glob(os.path.join(system.val_dir, '*.png')))

@@ -7,67 +7,68 @@ export ROOT_DIR=dataset/WAT
 export CUDA_VISIBLE_DEVICES=1
 
 scene_name=breville
+model="NGPA"
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=car_resized
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=community
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 32.0 --eval_lpips --vocab_size=10 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 32.0 --eval_lpips --vocab_size=10 --model $model
 
 scene_name=dyson
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=10 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=grill_resized
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=kitchen
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=living_room
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=mac
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=6 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=6 --model $model
 
 scene_name=ninja
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 8.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=spa
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 16.0 --eval_lpips --vocab_size=5 --model $model
 
 scene_name=street
 python train_ngpa.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \
     --exp_name ${scene_name} --downsample 1.0 \
-    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 32.0 --eval_lpips --vocab_size=5 
+    --num_epochs 20 --batch_size 8192 --lr 1e-2 --dim_a 48 --scale 32.0 --eval_lpips --vocab_size=5 --model $model
