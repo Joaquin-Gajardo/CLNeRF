@@ -70,7 +70,7 @@ class NeRFSystem(LightningModule):
                 p.requires_grad = False
 
         # Initialize JSON results dictionary
-        self.final_results = {'psnr': [], 'ssim': [], 'lpips': []}
+        self.final_results = {'psnr': [], 'ssim': [], 'lpips': [], 'image_ids': [], 'image_paths': []}
 
         rgb_act = 'None' if self.hparams.use_exposure else 'Sigmoid'
         self.model = NGPGv2(scale=self.hparams.scale, vocab_size=self.hparams.vocab_size, rgb_act=rgb_act, dim_a = self.hparams.dim_a, dim_g = self.hparams.dim_g)
@@ -228,6 +228,8 @@ class NeRFSystem(LightningModule):
 
         # Save results for JSON
         self.final_results['psnr'].append(psnr.item())
+        self.final_results['image_ids'].append(batch['img_idxs'])
+        self.final_results['image_paths'].append(self.test_dataset.img_paths[batch['img_idxs']])
         self.final_results['ssim'].append(ssim.item())
         if self.hparams.eval_lpips:
             self.final_results['lpips'].append(lpips.item())

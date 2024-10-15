@@ -4,10 +4,10 @@ export ROOT_DIR=dataset/WAT
 # export CUDA_HOME=/usr/local/cuda-11.6
 # export PATH=/usr/local/cuda-11.6/bin:$PATH
 # export LD_LIBRARY_PATH=/usr/local/cuda-11.6/lib64:$LD_LIBRARY_PATH
-export CUDA_VISIBLE_DEVICES=1   
+export CUDA_VISIBLE_DEVICES=0   
 
 model="NGPGv2"
-exp="exp0" # exp1 is with dim_g=32
+exp="exp2" # exp1 is with dim_g=32
 scene_name=breville
 python train_ngpgv2.py \
     --root_dir $ROOT_DIR/${scene_name} --dataset_name colmap_ngpa \

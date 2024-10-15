@@ -6,37 +6,36 @@ from pathlib import Path
 
 import pandas as pd
 
-
 # %% @title Get amount of timesteps and frames per scene for the WAT dataset
-def analyze_dataset(root_path):
-    root = Path(root_path)
-    summary = defaultdict(lambda: {"video_count": 0, "total_images": 0})
+# def analyze_dataset(root_path):
+#     root = Path(root_path)
+#     summary = defaultdict(lambda: {"video_count": 0, "total_images": 0})
     
-    for scene in root.iterdir():
-        if scene.is_dir() and scene.name != ".DS_Store":
-            images_folder = scene / "images"
-            timestep_paths = [timestep for timestep in images_folder.iterdir()]
-            summary[scene.name]["video_count"] = len(timestep_paths)
-            for image_folder in timestep_paths:
-                summary[scene.name]["total_images"] += len(list(image_folder.glob("*.png")))
+#     for scene in root.iterdir():
+#         if scene.is_dir() and scene.name != ".DS_Store":
+#             images_folder = scene / "images"
+#             timestep_paths = [timestep for timestep in images_folder.iterdir()]
+#             summary[scene.name]["video_count"] = len(timestep_paths)
+#             for image_folder in timestep_paths:
+#                 summary[scene.name]["total_images"] += len(list(image_folder.glob("*.png")))
 
-    # Calculate averages and prepare data for DataFrame
-    data = []
-    for scene, stats in summary.items():
-        avg_images = stats["total_images"] / stats["video_count"] if stats["video_count"] > 0 else 0
-        data.append({
-            "Scene": scene,
-            "Video count": stats["video_count"],
-            "Avg images per video": int(round(avg_images, 2))
-        })
+#     # Calculate averages and prepare data for DataFrame
+#     data = []
+#     for scene, stats in summary.items():
+#         avg_images = stats["total_images"] / stats["video_count"] if stats["video_count"] > 0 else 0
+#         data.append({
+#             "Scene": scene,
+#             "Video count": stats["video_count"],
+#             "Avg images per video": int(round(avg_images, 2))
+#         })
     
-    # Create and return the DataFrame
-    return pd.DataFrame(data).sort_values("Scene")
+#     # Create and return the DataFrame
+#     return pd.DataFrame(data).sort_values("Scene")
 
-# Use the function
-df = analyze_dataset("dataset/WAT")
-print(df.to_string(index=False))
-df.to_csv("WAT_scenes_metadata.csv", index=False)
+# # Use the function
+# df = analyze_dataset("dataset/WAT")
+# print(df.to_string(index=False))
+# df.to_csv("WAT_scenes_metadata.csv", index=False)
 
 # %% @title Summarize results
 
@@ -91,8 +90,8 @@ def summarize_results(base_folder):
 
 #%%
 # Usage
-model = "NGPG"
-exp = None #"exp1" # None for no experiment (NGP and NGPA)
+model = "NGP"
+exp = "exp2" #"exp1" # None for no experiment (NGP and NGPA)
 base_folder = f"results/colmap_ngpa/{model}"
 if exp:
     base_folder = os.path.join(base_folder, exp)

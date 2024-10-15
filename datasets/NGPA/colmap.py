@@ -85,7 +85,16 @@ class ColmapDataset_NGPA(BaseDataset):
             for name in sorted(img_names)
         ]
         # get the task id
-        task_ids, test_img_ids = name_to_task(img_paths)
+        #task_ids, test_img_ids = name_to_task(img_paths)
+        subfolders = sorted(set([path.split('/')[-2] for path in img_paths]))
+        timestep_mapping = {subfolder: idx for idx, subfolder in enumerate(subfolders)}
+        task_ids = [timestep_mapping[path.split('/')[-2]] for path in img_paths]
+
+        test_img_ids = [idx for idx, path in enumerate(img_paths) if idx % 8 == 0]
+        
+        # For debugging
+        train_img_paths = [path for idx, path in enumerate(img_paths) if idx % 8 != 0]
+        test_img_paths = [path for idx, path in enumerate(img_paths) if idx % 8 == 0]
 
         w2c_mats = []
         bottom = np.array([[0, 0, 0, 1.]])
@@ -135,7 +144,7 @@ class ColmapDataset_NGPA(BaseDataset):
 
         # train test split
         if split == 'train':
-            img_paths = [
+            self.img_paths = [
                 x for i, x in enumerate(img_paths) if i not in test_img_ids
             ]
             self.poses = np.array(
@@ -144,15 +153,15 @@ class ColmapDataset_NGPA(BaseDataset):
                 x for i, x in enumerate(task_ids) if i not in test_img_ids
             ]
         elif split == 'test':
-            img_paths = [
+            self.img_paths = [
                 x for i, x in enumerate(img_paths) if i in test_img_ids
             ]
             self.poses = np.array(
                 [x for i, x in enumerate(self.poses) if i in test_img_ids])
             task_ids = [x for i, x in enumerate(task_ids) if i in test_img_ids]
 
-        print(f'Loading {len(img_paths)} {split} images ...')
-        for i, img_path in enumerate(tqdm(img_paths)):
+        print(f'Loading {len(self.img_paths)} {split} images ...')
+        for i, img_path in enumerate(tqdm(self.img_paths)):
             buf = []  # buffer for ray attributes: rgb, etc
 
             img = read_image(img_path, self.img_wh, blend_a=False)
@@ -181,7 +190,7 @@ class ColmapDataset_NGPA(BaseDataset):
                 'img_idxs': img_idxs,
                 'pix_idxs': pix_idxs,
                 'rgb': rays[:, :3],
-                'ts': self.ts[img_idxs]
+                'ts': self.ts[img_idxs],
             }
             if self.rays.shape[-1] == 4:  # HDR-NeRF data
                 sample['exposure'] = rays[:, 3:]
@@ -189,7 +198,7 @@ class ColmapDataset_NGPA(BaseDataset):
             sample = {
                 'pose': self.poses[idx],
                 'img_idxs': idx,
-                'ts': torch.tensor([self.ts[idx].item()]).int()
+                'ts': torch.tensor([self.ts[idx].item()]).int(),
             }
             if len(self.rays) > 0:  # if ground truth available
                 rays = self.rays[idx]
